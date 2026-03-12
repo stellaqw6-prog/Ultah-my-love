@@ -1,676 +1,93 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>💝 Serpihan Cinta - Untuk My Love 💝</title>
+    <title>Magic Hand Sensor - Mobile</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body {
-            font-family: 'Segoe UI', 'Comic Sans MS', cursive, sans-serif;
-            background: linear-gradient(145deg, #1a1428, #2d1b3a);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            touch-action: none;
-        }
-
-        #container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            max-width: 450px;
-            max-height: 900px;
-            margin: 0 auto;
-            overflow: hidden;
-            border-radius: 30px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-        }
-
-        #canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: block;
-            background: radial-gradient(circle at 30% 30%, #3a2355, #120c1c);
-            touch-action: none;
-        }
-
-        #ui-overlay {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            padding: 20px;
-            z-index: 10;
-            pointer-events: none;
-        }
-
-        .message-box {
-            background: rgba(20, 10, 30, 0.7);
-            backdrop-filter: blur(10px);
-            border: 2px solid #ff99cc;
-            border-radius: 60px;
-            padding: 15px 25px;
-            margin-bottom: 20px;
-            color: white;
-            font-size: 1.2rem;
-            text-align: center;
-            box-shadow: 0 5px 20px rgba(255, 105, 180, 0.3);
-            pointer-events: auto;
-            animation: glow 2s infinite alternate;
-        }
-
-        @keyframes glow {
-            from { box-shadow: 0 0 10px #ff99cc; }
-            to { box-shadow: 0 0 30px #ff69b4; }
-        }
-
-        .button-group {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            pointer-events: auto;
-        }
-
-        .btn {
-            background: linear-gradient(145deg, #ff69b4, #ff1493);
-            border: none;
-            border-radius: 50px;
-            padding: 15px 30px;
-            color: white;
-            font-size: 1.1rem;
-            font-weight: bold;
-            box-shadow: 0 5px 0 #b2226a, 0 10px 20px rgba(0,0,0,0.3);
-            cursor: pointer;
-            transition: 0.1s ease;
-            border: 2px solid #ffb6c1;
-            flex: 1;
-            max-width: 200px;
-            pointer-events: auto;
-            touch-action: manipulation;
-        }
-
-        .btn:active {
-            transform: translateY(5px);
-            box-shadow: 0 2px 0 #b2226a, 0 10px 20px rgba(0,0,0,0.3);
-        }
-
-        .btn-secondary {
-            background: linear-gradient(145deg, #9b59b6, #8e44ad);
-            box-shadow: 0 5px 0 #6c3483;
-        }
-
-        .status-bar {
-            position: absolute;
-            top: 20px;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 20px;
-            z-index: 10;
-            pointer-events: none;
-            color: white;
-            text-shadow: 0 2px 5px black;
-        }
-
-        .status-item {
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(5px);
-            padding: 8px 20px;
-            border-radius: 40px;
-            border: 1px solid #ff99cc;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        #loading {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #1a0f2a;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            color: white;
-            transition: opacity 0.5s;
-        }
-
-        .loader {
-            width: 60px;
-            height: 60px;
-            border: 5px solid #ff99cc;
-            border-top-color: #ff1493;
-            border-radius: 50%;
-            animation: spin 1s infinite linear;
-            margin: 20px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .hand-guide {
-            position: absolute;
-            bottom: 150px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            padding: 10px 30px;
-            border-radius: 40px;
-            color: white;
-            font-size: 1.2rem;
-            border: 2px solid #ff99cc;
-            white-space: nowrap;
-            z-index: 10;
-            animation: bounce 2s infinite;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateX(-50%) translateY(0); }
-            50% { transform: translateX(-50%) translateY(-10px); }
-        }
-
-        @media (max-width: 400px) {
-            .message-box { font-size: 1rem; padding: 12px 20px; }
-            .btn { padding: 12px 20px; font-size: 1rem; }
-        }
+        body { margin: 0; background: #000; overflow: hidden; color: white; font-family: sans-serif; }
+        canvas { position: absolute; top: 0; left: 0; }
+        .menu { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 10px; }
+        button { padding: 10px; background: rgba(255,255,255,0.2); border: 1px solid white; color: white; border-radius: 5px; }
+        video { display: none; }
     </style>
 </head>
 <body>
-    <div id="container">
-        <!-- Loading Screen -->
-        <div id="loading">
-            <h2>✨ Loading Serpihan Cinta ✨</h2>
-            <div class="loader"></div>
-            <p style="margin-top: 20px;">Untuk My Love Tersayang ❤️</p>
-            <p style="font-size: 0.9rem; opacity: 0.7;">Izinkan akses kamera ya</p>
-        </div>
-
-        <!-- Canvas Utama -->
-        <canvas id="canvas"></canvas>
-
-        <!-- Status Bar -->
-        <div class="status-bar">
-            <div class="status-item" id="handStatus">✋ Mencari tangan...</div>
-            <div class="status-item" id="particleCount">✨ 0</div>
-        </div>
-
-        <!-- Hand Guide -->
-        <div class="hand-guide" id="handGuide">
-            👆 Gerakkan jari telunjuk
-        </div>
-
-        <!-- UI Overlay -->
-        <div id="ui-overlay">
-            <div class="message-box" id="loveMessage">
-                ❤️ Selamat Ulang Tahun My Love ❤️
-            </div>
-            <div class="button-group">
-                <button class="btn" id="clearBtn">✨ Bersihkan</button>
-                <button class="btn btn-secondary" id="nextMsgBtn">💕 Ucapan</button>
-            </div>
-        </div>
+    <video id="input_video"></video>
+    <canvas id="output_canvas"></canvas>
+    <div class="menu">
+        <button onclick="setShape('heart')">❤️ Hati</button>
+        <button onclick="setShape('planet')">🪐 Planet</button>
+        <button onclick="setShape('couple')">👥 Pasangan</button>
     </div>
 
-    <!-- Load TensorFlow.js dan Handpose -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.0.0/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose@0.0.6/dist/handpose.min.js"></script>
-
     <script>
-        // ===================== KONFIGURASI =====================
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const loadingEl = document.getElementById('loading');
-        const handStatusEl = document.getElementById('handStatus');
-        const particleCountEl = document.getElementById('particleCount');
-        const handGuideEl = document.getElementById('handGuide');
-        const loveMessageEl = document.getElementById('loveMessage');
+        const videoElement = document.getElementById('input_video');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        canvasElement.width = window.innerWidth;
+        canvasElement.height = window.innerHeight;
 
-        // Kumpulan ucapan
-        const messages = [
-            '❤️ Selamat Ulang Tahun My Love ❤️',
-            '🌸 Untuk Cewekku Tersayang 🌸',
-            '💖 Semoga Hari Ini Istimewa 💖',
-            '✨ Setiap Serpihan Adalah Doaku ✨',
-            '📖 Cerita Kita Takkan Berakhir 📖',
-            '💑 Jatuh Cinta Setiap Hari 💑',
-            '🎂 24 Jam Cintaku Padamu 🎂',
-            '💫 You Are My Everything 💫'
-        ];
-        let currentMsgIndex = 0;
+        let particles = [];
+        let mode = 'heart';
 
-        // ===================== PARTIKEL SERPIHAN =====================
-        class Serpihan {
-            constructor(x, y, tipe = null) {
-                this.x = x;
-                this.y = y;
-                this.targetX = x;
-                this.targetY = y;
-                
-                const types = ['love', 'bintang', 'buku', 'hati', 'kupu'];
-                this.tipe = tipe || types[Math.floor(Math.random() * types.length)];
-                
-                // Pilih emoji berdasarkan tipe
-                if (this.tipe === 'love') {
-                    this.emoji = ['❤️', '💖', '💕', '💗', '💓'][Math.floor(Math.random() * 5)];
-                    this.color = `hsl(${Math.random() * 20 + 340}, 80%, 70%)`; // pink-red
-                } else if (this.tipe === 'bintang') {
-                    this.emoji = ['✨', '⭐', '🌟', '💫'][Math.floor(Math.random() * 4)];
-                    this.color = `hsl(${Math.random() * 30 + 50}, 90%, 70%)`; // kuning
-                } else if (this.tipe === 'buku') {
-                    this.emoji = ['📘', '📕', '📗', '📖'][Math.floor(Math.random() * 4)];
-                    this.color = `hsl(${Math.random() * 30 + 200}, 80%, 70%)`; // biru
-                } else if (this.tipe === 'hati') {
-                    this.emoji = ['💑', '💏', '👩‍❤️‍👨', '💞'][Math.floor(Math.random() * 4)];
-                    this.color = `hsl(${Math.random() * 20 + 320}, 80%, 75%)`; // pink
-                } else {
-                    this.emoji = ['🦋', '🌸', '🌺', '🪷'][Math.floor(Math.random() * 4)];
-                    this.color = `hsl(${Math.random() * 30 + 280}, 80%, 70%)`; // ungu
-                }
-                
-                this.size = Math.random() * 25 + 20;
-                this.speed = Math.random() * 0.1 + 0.05;
-                this.angle = Math.random() * 360;
-                this.rotSpeed = (Math.random() - 0.5) * 2;
-                this.offsetX = (Math.random() - 0.5) * 60;
-                this.offsetY = (Math.random() - 0.5) * 60;
-                this.lifetime = Math.random() * 100 + 50;
-                this.age = 0;
-            }
-            
-            update(targetX, targetY) {
-                this.targetX = targetX + this.offsetX;
-                this.targetY = targetY + this.offsetY;
-                this.x += (this.targetX - this.x) * this.speed;
-                this.y += (this.targetY - this.y) * this.speed;
-                this.angle += this.rotSpeed;
-                this.age++;
-            }
-            
-            isDead() {
-                return this.age > this.lifetime;
-            }
-            
-            draw(ctx) {
-                const opacity = Math.max(0, 1 - this.age / this.lifetime);
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.rotate(this.angle * Math.PI / 180);
-                ctx.font = `${this.size}px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.globalAlpha = opacity * 0.9;
-                ctx.shadowColor = this.color;
-                ctx.shadowBlur = 15;
-                ctx.fillStyle = this.color;
-                ctx.fillText(this.emoji, 0, 0);
-                ctx.restore();
-            }
-        }
-
-        // ===================== HAND TRACKER =====================
-        class HandTracker {
+        class Particle {
             constructor() {
-                this.serpihan = [];
-                this.handPositions = [];
-                this.maxTrail = 15;
-                this.lastSpawn = 0;
-                this.fingerCount = 0;
-                this.handDetected = false;
-                this.video = null;
-                this.model = null;
+                this.x = Math.random() * canvasElement.width;
+                this.y = Math.random() * canvasElement.height;
+                this.targetX = this.x;
+                this.targetY = this.y;
+                this.size = Math.random() * 3 + 1;
+                this.color = `hsl(${Math.random() * 360}, 70%, 80%)`;
             }
-            
-            async init() {
-                // Setup video
-                this.video = document.createElement('video');
-                this.video.setAttribute('autoplay', '');
-                this.video.setAttribute('playsinline', '');
-                this.video.style.position = 'absolute';
-                this.video.style.top = '-9999px';
-                this.video.style.left = '-9999px';
-                this.video.style.width = '640px';
-                this.video.style.height = '480px';
-                document.body.appendChild(this.video);
-                
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ 
-                        video: { 
-                            facingMode: 'user',
-                            width: { ideal: 640 },
-                            height: { ideal: 480 }
-                        } 
-                    });
-                    this.video.srcObject = stream;
-                    await this.video.play();
-                    
-                    // Load handpose model
-                    this.model = await handpose.load();
-                    handStatusEl.innerHTML = '✋ Tangan terdeteksi!';
-                    handGuideEl.style.opacity = '1';
-                    
-                    // Start detection loop
-                    this.detect();
-                    
-                } catch (err) {
-                    console.error('Camera error:', err);
-                    handStatusEl.innerHTML = '❌ Kamera error';
-                    handGuideEl.innerHTML = '❌ Izinkan akses kamera';
-                }
+            update(hx, hy) {
+                this.x += (this.targetX + hx - this.x) * 0.1;
+                this.y += (this.targetY + hy - this.y) * 0.1;
             }
-            
-            async detect() {
-                if (!this.model || !this.video) return;
-                
-                const detectLoop = async () => {
-                    try {
-                        const predictions = await this.model.estimateHands(this.video);
-                        
-                        if (predictions.length > 0) {
-                            this.handDetected = true;
-                            const hand = predictions[0];
-                            
-                            // Ambil posisi ujung jari telunjuk (landmark 8)
-                            const indexTip = hand.landmarks[8];
-                            
-                            // Convert ke koordinat canvas
-                            const canvasWidth = canvas.width;
-                            const canvasHeight = canvas.height;
-                            
-                            // Scale dari video (640x480) ke canvas
-                            const scaleX = canvasWidth / 640;
-                            const scaleY = canvasHeight / 480;
-                            
-                            let x = indexTip[0] * scaleX;
-                            let y = indexTip[1] * scaleY;
-                            
-                            // Flip horizontal agar natural
-                            x = canvasWidth - x;
-                            
-                            // Batasi agar dalam canvas
-                            x = Math.max(20, Math.min(canvasWidth - 20, x));
-                            y = Math.max(20, Math.min(canvasHeight - 20, y));
-                            
-                            // Simpan posisi
-                            this.handPositions.push({x, y});
-                            if (this.handPositions.length > this.maxTrail) {
-                                this.handPositions.shift();
-                            }
-                            
-                            // Hitung jumlah jari (sederhana)
-                            this.fingerCount = this.countFingers(hand);
-                            
-                            // Spawn serpihan baru
-                            const now = Date.now();
-                            if (now - this.lastSpawn > 80) {
-                                for (let i = 0; i < 2; i++) {
-                                    this.serpihan.push(new Serpihan(x, y));
-                                }
-                                this.lastSpawn = now;
-                            }
-                            
-                            handStatusEl.innerHTML = `✋ ${this.fingerCount} jari`;
-                        } else {
-                            this.handDetected = false;
-                            this.handPositions = [];
-                            handStatusEl.innerHTML = '✋ Tangan tidak terlihat';
-                        }
-                        
-                        // Update serpihan
-                        if (this.handPositions.length > 0) {
-                            const target = this.handPositions[this.handPositions.length - 1];
-                            for (let s of this.serpihan) {
-                                s.update(target.x, target.y);
-                            }
-                        } else {
-                            for (let s of this.serpihan) {
-                                s.update(canvas.width/2, canvas.height/2);
-                            }
-                        }
-                        
-                        // Hapus serpihan mati
-                        this.serpihan = this.serpihan.filter(s => !s.isDead());
-                        
-                        // Update counter
-                        particleCountEl.innerHTML = `✨ ${this.serpihan.length}`;
-                        
-                    } catch (err) {
-                        console.error('Detection error:', err);
-                    }
-                    
-                    requestAnimationFrame(detectLoop);
-                };
-                
-                detectLoop();
-            }
-            
-            countFingers(hand) {
-                // Landmark jari: [4(ibu jari), 8(telunjuk), 12(tengah), 16(manis), 20(kelingking)]
-                const tips = [4, 8, 12, 16, 20];
-                const bases = [2, 6, 10, 14, 18];
-                
-                let count = 0;
-                
-                // Ibu jari (khusus)
-                if (hand.landmarks[4][0] < hand.landmarks[3][0]) {
-                    count++;
-                }
-                
-                // 4 jari lainnya
-                for (let i = 1; i < 5; i++) {
-                    if (hand.landmarks[tips[i]][1] < hand.landmarks[bases[i]][1]) {
-                        count++;
-                    }
-                }
-                
-                return count;
-            }
-            
-            draw(ctx) {
-                // Gambar trail
-                if (this.handPositions.length > 1) {
-                    for (let i = 0; i < this.handPositions.length - 1; i++) {
-                        const alpha = i / this.handPositions.length;
-                        ctx.beginPath();
-                        ctx.strokeStyle = `rgba(255, 182, 193, ${alpha * 0.5})`;
-                        ctx.lineWidth = 5;
-                        ctx.moveTo(this.handPositions[i].x, this.handPositions[i].y);
-                        ctx.lineTo(this.handPositions[i+1].x, this.handPositions[i+1].y);
-                        ctx.stroke();
-                    }
-                }
-                
-                // Gambar titik di ujung jari
-                if (this.handPositions.length > 0) {
-                    const last = this.handPositions[this.handPositions.length - 1];
-                    ctx.beginPath();
-                    ctx.arc(last.x, last.y, 10, 0, 2 * Math.PI);
-                    ctx.fillStyle = 'rgba(255, 105, 180, 0.5)';
-                    ctx.shadowColor = '#ff69b4';
-                    ctx.shadowBlur = 20;
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-                }
-                
-                // Gambar semua serpihan
-                for (let s of this.serpihan) {
-                    s.draw(ctx);
-                }
-            }
-            
-            clear() {
-                this.serpihan = [];
+            draw() {
+                canvasCtx.fillStyle = this.color;
+                canvasCtx.beginPath();
+                canvasCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                canvasCtx.fill();
             }
         }
 
-        // ===================== BACKGROUND =====================
-        class Background {
-            constructor() {
-                this.stars = [];
-                this.planes = [];
-                
-                for (let i = 0; i < 50; i++) {
-                    this.stars.push({
-                        x: Math.random(),
-                        y: Math.random(),
-                        size: Math.random() * 2 + 1,
-                        speed: Math.random() * 0.002 + 0.001
-                    });
+        for(let i=0; i<800; i++) particles.push(new Particle());
+
+        function setShape(newMode) {
+            mode = newMode;
+            particles.forEach((p, i) => {
+                let t = (i / particles.length) * Math.PI * 2;
+                if(mode === 'heart') {
+                    p.targetX = 16 * Math.pow(Math.sin(t), 3) * 10 + (canvasElement.width/2);
+                    p.targetY = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) * 10 + (canvasElement.height/2);
+                } else if(mode === 'planet') {
+                    p.targetX = Math.cos(t) * 150 + (canvasElement.width/2);
+                    p.targetY = Math.sin(t) * 50 + (canvasElement.height/2);
+                } else if(mode === 'couple') {
+                    p.targetX = (i % 2 === 0 ? -40 : 40) + (canvasElement.width/2);
+                    p.targetY = canvasElement.height - (Math.random() * 150 + 100);
                 }
-                
-                for (let i = 0; i < 2; i++) {
-                    this.planes.push({
-                        x: Math.random(),
-                        y: Math.random() * 0.5,
-                        speed: Math.random() * 0.005 + 0.002,
-                        emoji: '✈️'
-                    });
-                }
-            }
-            
-            update(canvas) {
-                // Update stars (berkedip)
-                // Update planes
-                for (let p of this.planes) {
-                    p.x += p.speed;
-                    if (p.x > 1.1) {
-                        p.x = -0.1;
-                        p.y = Math.random() * 0.5;
-                    }
-                }
-            }
-            
-            draw(ctx, canvas) {
-                const width = canvas.width;
-                const height = canvas.height;
-                
-                // Gradient background
-                const gradient = ctx.createLinearGradient(0, 0, 0, height);
-                gradient.addColorStop(0, '#1a1428');
-                gradient.addColorStop(0.5, '#2d1b3a');
-                gradient.addColorStop(1, '#1f122b');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, width, height);
-                
-                // Gambar bintang
-                for (let s of this.stars) {
-                    const x = s.x * width;
-                    const y = s.y * height;
-                    const brightness = 0.5 + 0.5 * Math.sin(Date.now() * 0.002 + x);
-                    
-                    ctx.beginPath();
-                    ctx.arc(x, y, s.size, 0, 2 * Math.PI);
-                    ctx.fillStyle = `rgba(255, 255, 255, ${brightness * 0.7})`;
-                    ctx.shadowColor = 'white';
-                    ctx.shadowBlur = 10;
-                    ctx.fill();
-                }
-                ctx.shadowBlur = 0;
-                
-                // Gambar pesawat
-                ctx.font = '40px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
-                ctx.shadowColor = '#ffd700';
-                ctx.shadowBlur = 20;
-                for (let p of this.planes) {
-                    ctx.fillStyle = 'rgba(255, 215, 0, 0.8)';
-                    ctx.fillText(p.emoji, p.x * width, p.y * height);
-                }
-                ctx.shadowBlur = 0;
-            }
+            });
         }
 
-        // ===================== INISIALISASI =====================
-        async function init() {
-            // Set canvas size
-            function resizeCanvas() {
-                const container = document.getElementById('container');
-                canvas.width = container.clientWidth;
-                canvas.height = container.clientHeight;
+        const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+        hands.onResults((results) => {
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            let hx = 0, hy = 0;
+            if (results.multiHandLandmarks.length > 0) {
+                hx = (results.multiHandLandmarks[0][8].x - 0.5) * 200;
+                hy = (results.multiHandLandmarks[0][8].y - 0.5) * 200;
             }
-            
-            window.addEventListener('resize', resizeCanvas);
-            resizeCanvas();
-            
-            // Init background
-            const bg = new Background();
-            
-            // Init hand tracker
-            const tracker = new HandTracker();
-            await tracker.init();
-            
-            // Hide loading
-            setTimeout(() => {
-                loadingEl.style.opacity = '0';
-                setTimeout(() => {
-                    loadingEl.style.display = 'none';
-                }, 500);
-            }, 1500);
-            
-            // ===================== ANIMASI LOOP =====================
-            function animate() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                // Update dan gambar background
-                bg.update(canvas);
-                bg.draw(ctx, canvas);
-                
-                // Gambar tracker dan serpihan
-                tracker.draw(ctx);
-                
-                requestAnimationFrame(animate);
-            }
-            
-            animate();
-            
-            // ===================== EVENT LISTENERS =====================
-            document.getElementById('clearBtn').addEventListener('click', () => {
-                tracker.clear();
-            });
-            
-            document.getElementById('nextMsgBtn').addEventListener('click', () => {
-                currentMsgIndex = (currentMsgIndex + 1) % messages.length;
-                loveMessageEl.innerHTML = messages[currentMsgIndex];
-            });
-            
-            // Touch event untuk clear dengan tap
-            canvas.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                tracker.clear();
-            });
-            
-            canvas.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                tracker.clear();
-            });
-            
-            // Prevent scroll on touch
-            document.body.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-            }, { passive: false });
-        }
+            particles.forEach(p => { p.update(hx, hy); p.draw(); });
+        });
 
-        // Mulai
-        init();
+        const camera = new Camera(videoElement, {
+            onFrame: async () => { await hands.send({image: videoElement}); },
+            width: 640, height: 480
+        });
+        camera.start();
+        setShape('heart');
     </script>
 </body>
 </html>
