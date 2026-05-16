@@ -538,16 +538,16 @@ input[type="text"],input[type="email"],input[type="password"],input[type="number
     <p class="hero-desc">Platform modern untuk memantau perkembangan ngaji santri, absensi harian, dan komunikasi antara wali, pengajar, dan admin TPQ secara realtime.</p>
     <div class="hero-btns">
       <button class="btn-hero-main g-em" onclick="showPage('login')">🌙 Mulai Sekarang</button>
-      <button class="btn-hero-outline" onclick="showPage('login')">📋 Coba Demo</button>
+      <button class="btn-hero-outline" onclick="showPage('register')">📝 Daftar Sekarang</button>
     </div>
   </section>
 
   <div class="g-em" style="padding:4px 0">
     <div class="stats-bar" style="max-width:700px;margin:0 auto">
-      <div class="stat-item"><div class="stat-num" id="stat-total">6</div><div class="stat-lbl">Total Santri</div></div>
-      <div class="stat-item"><div class="stat-num">3</div><div class="stat-lbl">Kelas Aktif</div></div>
-      <div class="stat-item"><div class="stat-num">2</div><div class="stat-lbl">Pengajar</div></div>
-      <div class="stat-item"><div class="stat-num">95%</div><div class="stat-lbl">Kehadiran</div></div>
+      <div class="stat-item"><div class="stat-num">📋</div><div class="stat-lbl">Absensi Harian</div></div>
+      <div class="stat-item"><div class="stat-num">📊</div><div class="stat-lbl">Laporan Lengkap</div></div>
+      <div class="stat-item"><div class="stat-num">🔔</div><div class="stat-lbl">Notifikasi Realtime</div></div>
+      <div class="stat-item"><div class="stat-num">🔒</div><div class="stat-lbl">Data Aman</div></div>
     </div>
   </div>
 
@@ -786,13 +786,14 @@ input[type="text"],input[type="email"],input[type="password"],input[type="number
 // FIREBASE CONFIG — Ganti dengan config Firebase Anda!
 // =====================================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyC_FIREBASE_KEY_PLACEHOLDER",
+  apiKey: "AIzaSyDwE-huSTIoQ2RpY00c8PDzh6QPq5hzm4k",
   authDomain: "absensi-tpq-243e7.firebaseapp.com",
   databaseURL: "https://absensi-tpq-243e7-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "absensi-tpq-243e7",
   storageBucket: "absensi-tpq-243e7.appspot.com",
-  messagingSenderId: "GANTI_MESSAGING_ID",
-  appId: "GANTI_APP_ID"
+  messagingSenderId: "85724250879",
+  appId: "1:85724250879:web:859e0c10865f4d7fb2c2ca",
+  measurementId: "G-6ERKWWBFZP"
 };
 
 // =====================================================================
@@ -811,7 +812,7 @@ const DEMO_USERS = {
 // =====================================================================
 const ADMIN_CREDENTIALS = {
   username: "admin",
-  password: "admin123"
+  password: "Gaktaukok"
 };
 
 let selectedJabatan = null; // 'admin' | 'pengajar' | 'wali'
@@ -1260,17 +1261,8 @@ async function doLogin() {
     if (!uname || !pass) { toast("Isi username dan password!", "error"); var b=$("login-btn");if(b){b.disabled=false;b.innerHTML="🌙 Masuk";}return; }
     await new Promise(function(r){setTimeout(r,700);});
     if (uname === ADMIN_CREDENTIALS.username && pass === ADMIN_CREDENTIALS.password) {
-      // Cek Firebase jika tersedia
-      try {
-        var snap = await firebase.database().ref("admin_credentials").once("value");
-        var cred = snap.val();
-        if (cred && (cred.username !== uname || cred.password !== pass)) {
-          toast("Username atau password admin salah!", "error");
-          var b=$("login-btn");if(b){b.disabled=false;b.innerHTML="🌙 Masuk";}return;
-        }
-      } catch(e) { /* fallback ke hardcoded jika DB error */ }
-      currentUser = {uid:"admin1",role:"admin",name:"Ustadz Ahmad",email:"admin@tpq.id",wa:"081111111111"};
-      await loadFirebaseData();
+      currentUser = {uid:"admin1",role:"admin",name:"Admin TPQ",email:"admin@tpq.id",wa:""};
+      try { await loadFirebaseData(); } catch(e) { /* lanjut meski DB error */ }
       loginSuccess();
     } else {
       toast("Username atau password admin salah!", "error");
@@ -1289,8 +1281,26 @@ async function doLogin() {
     await firebase.auth().signInWithEmailAndPassword(email, pass);
     // onAuthStateChanged akan verifikasi role sesuai jabatan yang dipilih
   } catch(e) {
-    toast("Login gagal: " + (e.message||"Cek email & password"), "error");
-    var b=$("login-btn");if(b){b.disabled=false;b.innerHTML="🌙 Masuk";}
+    // Coba login lokal (akun yang dibuat saat Firebase belum aktif)
+    var localAccounts = JSON.parse(localStorage.getItem("localAccounts")||"[]");
+    var found = localAccounts.find(function(a){ return a.email===email && a.password===pass; });
+    if (found && found.role === selectedJabatan) {
+      currentUser = found;
+      if (found.role === "wali" && found.santriId) {
+        // Pastikan santri ada di list
+        var sIdx = DEMO_SANTRI.findIndex(function(s){ return s.id===found.santriId; });
+        if (sIdx < 0 && found.santriNama) {
+          DEMO_SANTRI.push({id:found.santriId, nama:found.santriNama, umur:0, kelas:found.santriKelas||"Kelas A", waliId:found.uid, status:"aktif"});
+        }
+      }
+      loginSuccess();
+    } else if (found && found.role !== selectedJabatan) {
+      toast("Jabatan tidak sesuai! Akun ini adalah " + found.role, "error");
+      var b=$("login-btn");if(b){b.disabled=false;b.innerHTML="🌙 Masuk";}
+    } else {
+      toast("Login gagal: " + (e.message||"Cek email & password"), "error");
+      var b=$("login-btn");if(b){b.disabled=false;b.innerHTML="🌙 Masuk";}
+    }
   }
 }
 
@@ -1336,6 +1346,7 @@ async function doRegister() {
 
   setLoading("reg-btn", true);
 
+  // Coba Firebase dulu, kalau gagal simpan lokal
   try {
     var cred = await firebase.auth().createUserWithEmailAndPassword(email, pass);
     var uid = cred.user.uid;
@@ -1350,10 +1361,30 @@ async function doRegister() {
       userData.mapel = mapel;
     }
     await db.ref("users/"+uid).set(userData);
-    toast("Akun berhasil dibuat! 🎉", "success");
+    toast("Akun berhasil dibuat! 🎉 Silakan login.", "success");
     showPage("login");
   } catch(e) {
-    toast("Registrasi gagal: "+(e.message||"Coba lagi"), "error");
+    // Fallback: simpan akun lokal jika Firebase belum siap
+    var uid = "local_" + Date.now();
+    var userData = {uid:uid, name:namaWali, wa:wa, role:role, email:email, password:pass, createdAt:Date.now()};
+    if (role === "wali") {
+      var santriId = "s_" + Date.now();
+      DEMO_SANTRI.push({id:santriId, nama:namaSantri, umur:parseInt(umur)||0, kelas:kelas, waliId:uid, status:"aktif"});
+      userData.santriId = santriId;
+      userData.santriNama = namaSantri;
+      userData.santriKelas = kelas;
+      DEMO_AKUN_WALI.push(userData);
+    } else {
+      userData.mapel = mapel;
+      userData.kelas = [];
+      DEMO_AKUN_PENGAJAR.push(userData);
+    }
+    // Simpan ke localStorage supaya bisa login
+    var localAccounts = JSON.parse(localStorage.getItem("localAccounts")||"[]");
+    localAccounts.push(userData);
+    localStorage.setItem("localAccounts", JSON.stringify(localAccounts));
+    toast("Akun dibuat (mode lokal)! 🎉 Silakan login.", "success");
+    showPage("login");
   }
   var btn=$("reg-btn");if(btn){btn.disabled=false;btn.innerHTML="✅ Daftar Sekarang";}
 }
