@@ -1279,28 +1279,16 @@ async function doLogin() {
   // Firebase Auth
   try {
     await firebase.auth().signInWithEmailAndPassword(email, pass);
-    // onAuthStateChanged akan verifikasi role sesuai jabatan yang dipilih
+    // onAuthStateChanged akan handle sisanya
   } catch(e) {
-    // Coba login lokal (akun yang dibuat saat Firebase belum aktif)
-    var localAccounts = JSON.parse(localStorage.getItem("localAccounts")||"[]");
-    var found = localAccounts.find(function(a){ return a.email===email && a.password===pass; });
-    if (found && found.role === selectedJabatan) {
-      currentUser = found;
-      if (found.role === "wali" && found.santriId) {
-        // Pastikan santri ada di list
-        var sIdx = DEMO_SANTRI.findIndex(function(s){ return s.id===found.santriId; });
-        if (sIdx < 0 && found.santriNama) {
-          DEMO_SANTRI.push({id:found.santriId, nama:found.santriNama, umur:0, kelas:found.santriKelas||"Kelas A", waliId:found.uid, status:"aktif"});
-        }
-      }
-      loginSuccess();
-    } else if (found && found.role !== selectedJabatan) {
-      toast("Jabatan tidak sesuai! Akun ini adalah " + found.role, "error");
-      var b=$("login-btn");if(b){b.disabled=false;b.innerHTML="🌙 Masuk";}
-    } else {
-      toast("Login gagal: " + (e.message||"Cek email & password"), "error");
-      var b=$("login-btn");if(b){b.disabled=false;b.innerHTML="🌙 Masuk";}
-    }
+    var msg = e.message || "Terjadi kesalahan";
+    if (msg.includes("user-not-found") || msg.includes("wrong-password") || msg.includes("invalid-credential")) msg = "Email atau password salah.";
+    else if (msg.includes("invalid-email")) msg = "Format email tidak valid.";
+    else if (msg.includes("too-many-requests")) msg = "Terlalu banyak percobaan, coba lagi nanti.";
+    else if (msg.includes("api-key-not-valid") || msg.includes("API key")) msg = "Konfigurasi Firebase belum aktif. Hubungi admin TPQ.";
+    else if (msg.includes("network")) msg = "Tidak ada koneksi internet, coba lagi.";
+    toast("Login gagal: " + msg, "error");
+    var b=$("login-btn"); if(b){b.disabled=false; b.innerHTML="🌙 Masuk";}
   }
 }
 
@@ -1346,47 +1334,35 @@ async function doRegister() {
 
   setLoading("reg-btn", true);
 
-  // Coba Firebase dulu, kalau gagal simpan lokal
   try {
     var cred = await firebase.auth().createUserWithEmailAndPassword(email, pass);
     var uid = cred.user.uid;
     var db = firebase.database();
-    var userData = {name:namaWali,wa:wa,role:role,email:email,createdAt:Date.now()};
+    var userData = {name:namaWali, wa:wa, role:role, email:email, createdAt:Date.now()};
     if (role === "wali") {
       var santriRef = db.ref("santri").push();
       var santriId = santriRef.key;
-      await santriRef.set({nama:namaSantri,umur:parseInt(umur),kelas:kelas,waliId:uid,status:"aktif",createdAt:Date.now()});
+      await santriRef.set({nama:namaSantri, umur:parseInt(umur), kelas:kelas, waliId:uid, status:"aktif", createdAt:Date.now()});
       userData.santriId = santriId;
+      userData.santriNama = namaSantri;
+      userData.santriKelas = kelas;
     } else {
       userData.mapel = mapel;
+      userData.kelas = [];
     }
     await db.ref("users/"+uid).set(userData);
     toast("Akun berhasil dibuat! 🎉 Silakan login.", "success");
     showPage("login");
   } catch(e) {
-    // Fallback: simpan akun lokal jika Firebase belum siap
-    var uid = "local_" + Date.now();
-    var userData = {uid:uid, name:namaWali, wa:wa, role:role, email:email, password:pass, createdAt:Date.now()};
-    if (role === "wali") {
-      var santriId = "s_" + Date.now();
-      DEMO_SANTRI.push({id:santriId, nama:namaSantri, umur:parseInt(umur)||0, kelas:kelas, waliId:uid, status:"aktif"});
-      userData.santriId = santriId;
-      userData.santriNama = namaSantri;
-      userData.santriKelas = kelas;
-      DEMO_AKUN_WALI.push(userData);
-    } else {
-      userData.mapel = mapel;
-      userData.kelas = [];
-      DEMO_AKUN_PENGAJAR.push(userData);
-    }
-    // Simpan ke localStorage supaya bisa login
-    var localAccounts = JSON.parse(localStorage.getItem("localAccounts")||"[]");
-    localAccounts.push(userData);
-    localStorage.setItem("localAccounts", JSON.stringify(localAccounts));
-    toast("Akun dibuat (mode lokal)! 🎉 Silakan login.", "success");
-    showPage("login");
+    var msg = e.message || "Terjadi kesalahan";
+    if (msg.includes("email-already-in-use")) msg = "Email sudah terdaftar, gunakan email lain.";
+    else if (msg.includes("invalid-email")) msg = "Format email tidak valid.";
+    else if (msg.includes("weak-password")) msg = "Password terlalu lemah, minimal 6 karakter.";
+    else if (msg.includes("api-key-not-valid") || msg.includes("API key")) msg = "Konfigurasi Firebase belum aktif. Hubungi admin TPQ.";
+    else if (msg.includes("network")) msg = "Tidak ada koneksi internet, coba lagi.";
+    toast("Registrasi gagal: " + msg, "error");
   }
-  var btn=$("reg-btn");if(btn){btn.disabled=false;btn.innerHTML="✅ Daftar Sekarang";}
+  var btn=$("reg-btn"); if(btn){btn.disabled=false; btn.innerHTML="✅ Daftar Sekarang";}
 }
 
 function loginSuccess() {
