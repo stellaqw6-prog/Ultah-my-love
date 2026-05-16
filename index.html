@@ -625,11 +625,11 @@ input[type="text"],input[type="email"],input[type="password"],input[type="number
           </div>
         </div>
 
-        <!-- FORM PENGAJAR & WALI: email + password -->
+        <!-- FORM PENGAJAR & WALI: username + password -->
         <div id="email-fields">
           <div class="form-group">
-            <label class="form-label">EMAIL</label>
-            <input type="email" class="form-input" id="login-email" placeholder="email@contoh.com" onkeydown="if(event.key==='Enter')doLogin()"/>
+            <label class="form-label">USERNAME</label>
+            <input type="text" class="form-input" id="login-email" placeholder="username kamu" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"/>
           </div>
           <div class="form-group">
             <label class="form-label">PASSWORD</label>
@@ -709,16 +709,23 @@ input[type="text"],input[type="email"],input[type="password"],input[type="number
       </div>
       </div>
       <div class="form-group">
-        <label class="form-label">EMAIL</label>
-        <input type="email" class="form-input" id="reg-email" placeholder="email@contoh.com"/>
+        <label class="form-label">USERNAME</label>
+        <input type="text" class="form-input" id="reg-email" placeholder="Buat username unik (tanpa spasi)" autocomplete="username" oninput="this.value=this.value.replace(/[^a-z0-9_]/g,'')"/>
+        <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px">Huruf kecil & angka saja, cth: <b>bapakhasan</b></div>
       </div>
       <div class="form-group">
         <label class="form-label">PASSWORD</label>
-        <input type="password" class="form-input" id="reg-pass" placeholder="Minimal 6 karakter"/>
+        <div class="input-wrap">
+          <input type="password" class="form-input" id="reg-pass" placeholder="Minimal 6 karakter"/>
+          <span class="input-eye" onclick="togglePassVis('reg-pass',this)">👁</span>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">KONFIRMASI PASSWORD</label>
-        <input type="password" class="form-input" id="reg-pass2" placeholder="Ulangi password"/>
+        <div class="input-wrap">
+          <input type="password" class="form-input" id="reg-pass2" placeholder="Ulangi password"/>
+          <span class="input-eye" onclick="togglePassVis('reg-pass2',this)">👁</span>
+        </div>
       </div>
       <button class="btn-submit g-em" id="reg-btn" onclick="doRegister()">✅ Daftar Sekarang</button>
       <div class="auth-link">
@@ -1238,8 +1245,8 @@ async function publishPageToFirebase() {
 }
 
 
-function fillDemo(email, pass) {
-  $("login-email").value = email;
+function fillDemo(username, pass) {
+  $("login-email").value = username;
   $("login-pass").value = pass;
 }
 
@@ -1271,22 +1278,38 @@ async function doLogin() {
     return;
   }
 
-  // === PENGAJAR / WALI LOGIN (email + password) ===
-  var email = ($("login-email")||{value:""}).value.trim();
+  // === PENGAJAR / WALI LOGIN (username + password via DB) ===
+  var rawUsername = ($("login-email")||{value:""}).value.trim().toLowerCase();
   var pass  = ($("login-pass")||{value:""}).value;
-  if (!email || !pass) { toast("Isi email dan password!", "error"); var b=$("login-btn");if(b){b.disabled=false;b.innerHTML="🌙 Masuk";}return; }
+  if (!rawUsername || !pass) { toast("Isi username dan password!", "error"); var b=$("login-btn");if(b){b.disabled=false;b.innerHTML="🌙 Masuk";}return; }
 
-  // Firebase Auth
   try {
-    await firebase.auth().signInWithEmailAndPassword(email, pass);
-    // onAuthStateChanged akan handle sisanya
+    var db = firebase.database();
+    var snap = await db.ref("users").orderByChild("username").equalTo(rawUsername).once("value");
+    if (!snap.val()) {
+      toast("Login gagal: Username tidak ditemukan.", "error");
+      var b=$("login-btn");if(b){b.disabled=false;b.innerHTML="🌙 Masuk";}
+      return;
+    }
+    var uid = Object.keys(snap.val())[0];
+    var userData = snap.val()[uid];
+    if (userData.password !== pass) {
+      toast("Login gagal: Password salah.", "error");
+      var b=$("login-btn");if(b){b.disabled=false;b.innerHTML="🌙 Masuk";}
+      return;
+    }
+    if (userData.role !== selectedJabatan) {
+      toast("Login gagal: Akun ini bukan " + selectedJabatan + ".", "error");
+      var b=$("login-btn");if(b){b.disabled=false;b.innerHTML="🌙 Masuk";}
+      return;
+    }
+    currentUser = Object.assign({}, userData, {uid: uid});
+    localStorage.setItem("tpq_session", JSON.stringify({uid: uid, username: rawUsername}));
+    await loadFirebaseData();
+    loginSuccess();
   } catch(e) {
     var msg = e.message || "Terjadi kesalahan";
-    if (msg.includes("user-not-found") || msg.includes("wrong-password") || msg.includes("invalid-credential")) msg = "Email atau password salah.";
-    else if (msg.includes("invalid-email")) msg = "Format email tidak valid.";
-    else if (msg.includes("too-many-requests")) msg = "Terlalu banyak percobaan, coba lagi nanti.";
-    else if (msg.includes("api-key-not-valid") || msg.includes("API key")) msg = "Konfigurasi Firebase belum aktif. Hubungi admin TPQ.";
-    else if (msg.includes("network")) msg = "Tidak ada koneksi internet, coba lagi.";
+    if (msg.includes("network") || msg.includes("fetch")) msg = "Tidak ada koneksi internet, coba lagi.";
     toast("Login gagal: " + msg, "error");
     var b=$("login-btn"); if(b){b.disabled=false; b.innerHTML="🌙 Masuk";}
   }
@@ -1312,15 +1335,15 @@ async function doRegister() {
   var role      = ($("reg-role")||{value:"wali"}).value;
   var namaWali  = ($("reg-nama-wali")||{value:""}).value.trim();
   var wa        = ($("reg-wa")||{value:""}).value.trim();
-  var email     = ($("reg-email")||{value:""}).value.trim();
+  var rawUsername = ($("reg-email")||{value:""}).value.trim().toLowerCase();
   var pass      = ($("reg-pass")||{value:""}).value;
   var pass2     = ($("reg-pass2")||{value:""}).value;
 
   // Validasi dasar
-  if (!namaWali||!wa||!email||!pass) { toast("Semua field wajib diisi!", "error"); return; }
+  if (!namaWali||!wa||!rawUsername||!pass) { toast("Semua field wajib diisi!", "error"); return; }
+  if (!/^[a-z0-9_]{3,30}$/.test(rawUsername)) { toast("Username hanya huruf kecil, angka & underscore (3-30 karakter)!", "error"); return; }
   if (pass !== pass2) { toast("Password tidak cocok!", "error"); return; }
   if (pass.length < 6) { toast("Password minimal 6 karakter!", "error"); return; }
-
   // Validasi wali
   var namaSantri="", umur="", kelas="", mapel="";
   if (role === "wali") {
@@ -1335,10 +1358,17 @@ async function doRegister() {
   setLoading("reg-btn", true);
 
   try {
-    var cred = await firebase.auth().createUserWithEmailAndPassword(email, pass);
-    var uid = cred.user.uid;
     var db = firebase.database();
-    var userData = {name:namaWali, wa:wa, role:role, email:email, createdAt:Date.now()};
+    // Cek username sudah ada atau belum
+    var checkSnap = await db.ref("users").orderByChild("username").equalTo(rawUsername).once("value");
+    if (checkSnap.val()) {
+      toast("Registrasi gagal: Username sudah dipakai, coba yang lain.", "error");
+      var btn=$("reg-btn");if(btn){btn.disabled=false;btn.innerHTML="✅ Daftar Sekarang";}
+      return;
+    }
+    // Buat UID unik
+    var uid = "u_" + Date.now() + "_" + Math.random().toString(36).substr(2,6);
+    var userData = {name:namaWali, wa:wa, role:role, username:rawUsername, password:pass, createdAt:Date.now()};
     if (role === "wali") {
       var santriRef = db.ref("santri").push();
       var santriId = santriRef.key;
@@ -1355,11 +1385,7 @@ async function doRegister() {
     showPage("login");
   } catch(e) {
     var msg = e.message || "Terjadi kesalahan";
-    if (msg.includes("email-already-in-use")) msg = "Email sudah terdaftar, gunakan email lain.";
-    else if (msg.includes("invalid-email")) msg = "Format email tidak valid.";
-    else if (msg.includes("weak-password")) msg = "Password terlalu lemah, minimal 6 karakter.";
-    else if (msg.includes("api-key-not-valid") || msg.includes("API key")) msg = "Konfigurasi Firebase belum aktif. Hubungi admin TPQ.";
-    else if (msg.includes("network")) msg = "Tidak ada koneksi internet, coba lagi.";
+    if (msg.includes("network") || msg.includes("fetch")) msg = "Tidak ada koneksi internet, coba lagi.";
     toast("Registrasi gagal: " + msg, "error");
   }
   var btn=$("reg-btn"); if(btn){btn.disabled=false; btn.innerHTML="✅ Daftar Sekarang";}
@@ -1375,7 +1401,7 @@ function loginSuccess() {
 
 async function doLogout() {
   if (!confirm("Yakin ingin keluar?")) return;
-  try { await firebase.auth().signOut(); } catch(e) { console.warn(e); }
+  localStorage.removeItem("tpq_session");
   currentUser = null;
   currentPage = "dashboard";
   clearTimeout(autoLogoutTimer);
@@ -4254,20 +4280,25 @@ function initFirebase() {
   try {
     firebase.initializeApp(firebaseConfig);
     DEMO_MODE = false;
-    firebase.auth().onAuthStateChanged(async function(user) {
-      if (user) {
-        try {
-          var snap = await firebase.database().ref("users/"+user.uid).once("value");
-          var userData = snap.val();
-          if (userData) {
-            currentUser = Object.assign({},userData,{uid:user.uid,email:user.email,name:userData.name||userData.nama});
-            // Load data from Firebase
-            await loadFirebaseData();
-            loginSuccess();
-          }
-        } catch(dbErr) { console.warn("DB error:", dbErr); }
-      }
-    });
+    // Restore session dari localStorage (tanpa firebase.auth)
+    var saved = localStorage.getItem("tpq_session");
+    if (saved) {
+      try {
+        var sess = JSON.parse(saved);
+        if (sess && sess.uid) {
+          firebase.database().ref("users/"+sess.uid).once("value").then(async function(snap) {
+            var userData = snap.val();
+            if (userData) {
+              currentUser = Object.assign({}, userData, {uid: sess.uid});
+              await loadFirebaseData();
+              loginSuccess();
+            } else {
+              localStorage.removeItem("tpq_session");
+            }
+          }).catch(function(e){ localStorage.removeItem("tpq_session"); console.warn(e); });
+        }
+      } catch(e) { localStorage.removeItem("tpq_session"); }
+    }
   } catch(e) {
     console.error("Firebase init gagal:", e);
     toast("Firebase gagal diinisialisasi: " + (e.message||""), "error");
